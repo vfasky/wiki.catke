@@ -1,0 +1,2 @@
+#!/bin/bash
+$OPENSHIFT_DATA_DIR/bin/python $OPENSHIFT_REPO_DIR/diy/task.py
