@@ -1,0 +1,121 @@
+{% extends "layout/base.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block body %}
+<div class="wiki-wrap">
+    <!--边栏-->
+    <div class="sidebar">
+        {{modules.Directory()}}
+    </div>
+
+    <div class="wrap">
+        <div class="directory">
+            <div class="title">目录</div>
+        </div>
+        {{html}}
+
+        
+    </div>
+
+    <div class="footer clear">
+        © 2013 <a href="http://wiki.catke.com">wiki.catke.com</a>, all rights reserved
+        <span class="sys">
+            VERSION: {{handler.settings['version']}} 
+            | 
+            Time: {{handler.get_run_time()}} S 
+            |
+            Powered : 
+                <a href="http://wiki.catke.com/" target="_blank">wiki.catke</a> 
+                /
+                <a href="http://www.tornadoweb.org/" target="_blank">Tornado</a> 
+        </span>
+    </div>
+</div>
+
+<script type="text/javascript">
+        jQuery(function(){
+            var list = [];
+            var h2_index = -1;
+            var h3_index = -1;
+            var h4_index = -1;
+            var wrap_dom = jQuery('.wrap');
+            wrap_dom.find('h2,h3,h4').each(function(){
+                var self  = jQuery(this);
+                var data = {}
+                if(self.is('h2')){
+                    h2_index++;
+                    h3_index = -1;
+                    h4_index = -1;
+                    index = h2_index;
+                    data = list[index] = { tree : [] }
+                }else if (self.is('h3')){
+                    h3_index++;
+                    h4_index = -1;
+                    if(list[h2_index]){
+                        var h2 = list[h2_index].tree;
+                        data = h2[h3_index] = { tree : [] }
+                    }
+                    
+                }else{
+                    h4_index++;
+                    if(list[h2_index]){
+                        var h2 = list[h2_index].tree;
+                        var h3 = h2[h3_index].tree;
+                        data = h3[h4_index] = {}
+                    }
+                }
+
+                data['title'] = self.text();
+                data['top']   = self.offset().top
+            });
+            var dom = wrap_dom.find('.directory');
+
+            if(list.length == 0){
+                return dom.remove();   
+            }
+
+            var ul  = jQuery('<ul></ul>');
+            jQuery.each(list, function(k,v){
+                var nav = jQuery('<li></li>').html(v.title)
+                nav.appendTo(ul);
+                nav.click(function(){
+                    jQuery('html,body').animate({scrollTop:v.top});
+                    return false;  
+                });
+
+                if(v.tree.length > 0){
+                    var h2_ul = jQuery('<ul></ul>').appendTo(ul);
+                }
+
+                jQuery.each(v.tree, function(k1,v1){
+                    var nav = jQuery('<li></li>').html(v1.title)
+                    nav.appendTo(h2_ul);
+                    nav.click(function(){
+                        jQuery('html,body').animate({scrollTop:v1.top});  
+                        return false;
+                    });
+
+                    if(v1.tree.length > 0){
+                        var h3_ul = jQuery('<ul></ul>').appendTo(h2_ul);
+                    }
+                    
+                    jQuery.each(v1.tree, function(k2,v2){
+                        var nav = jQuery('<li></li>').html(v2.title)
+                        nav.appendTo(h3_ul);
+                        nav.click(function(){
+                            jQuery('html,body').animate({scrollTop:v2.top});  
+                            return false;
+                        });
+                    })
+                });
+            });
+            ul.appendTo(dom);
+            var height = dom.height();
+            dom.height(34).toggle(function(){
+                dom.height(height);
+            },function(){
+                dom.height(34);
+            })
+        });
+    </script>
+
+{% endblock %}

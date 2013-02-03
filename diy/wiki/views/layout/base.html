@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{{handler.__doc__}}{% endblock %}</title>
+    <link rel="stylesheet" href="{{static_url('style/default.css')}}">
+    
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.8.3.min.js"></script>
+</head>
+<body class="typo">
+    {% block body %}
+    {% endblock %}
+    
+</body>
+</html>

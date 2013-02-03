@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}出了点问题{% endblock %}</title>
+    <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+          <h1>提示信息</h1>
+        </div>
+        <code class="alert alert-error">
+            {{exception or msg}}
+        </code>
+        
+    </div>
+</body>
+</html>

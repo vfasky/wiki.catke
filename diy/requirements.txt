@@ -1,0 +1,9 @@
+mysql-python
+tornado
+peewee
+Jinja2
+requests
+pygments
+misaka
+markupsafe
+jieba

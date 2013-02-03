@@ -1,0 +1,41 @@
+<dl>
+    <dt>导航</dt>
+    {% for v in wiki_list %}
+        {% if v['is_dir'] == '1' %}
+            <dl>
+                <dt>{{v['name']}}</dt>
+
+                {% for v1 in v['list'] %}
+                    {% if v1['is_dir'] == '1' %}
+                    <dl>
+                        <dt>{{v1['name']}}</dt>
+
+                        {% for v2 in v1['list'] %}
+                            {% if v1['is_dir'] == '1' %}
+                            <dd>
+                                <a href="{{url_for('wiki.File', v2['path'])}}">
+                                    {{v2['name']}}
+                                </a>
+                            </dd>
+                            {% endif %}
+                        {% endfor %}
+                    </dl>
+                    {% else %}
+                    <dd>
+                        <a href="{{url_for('wiki.File', v1['path'])}}">
+                            {{v1['name']}}
+                        </a>
+                    </dd>
+                    {% endif %}
+               
+                {% endfor %}
+            </dl>
+        {% else %}
+        <dd>
+            <a href="{{url_for('wiki.File', v['path'])}}">
+                {{v['name']}}
+            </a>
+        </dd>
+        {% endif %}
+    {% endfor %}
+</dl>
