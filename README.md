@@ -12,7 +12,7 @@ Hi, 欢迎来 "喵客 wiki"
 
 ## 关于开源
 
-> 你可以从 [这里](#) 下载到源码, 欢迎 Fork
+> 你可以从 [这里](https://github.com/vfasky/wiki.catke) 下载到源码, 欢迎 Fork
 
 ### 如何部署?
 
@@ -39,4 +39,16 @@ Hi, 欢迎来 "喵客 wiki"
 在终端登陆后, 按照 [这里](https://openshift.redhat.com/community/blogs/enabling-python-27-on-a-paas-with-the-openshift-diy-app-type) 的教程安装 python 2.7.3, Setuptools, PIP
 
 > 注: 成功安装到 PIP 就行了
+> 当然,你还需要在openShift添加 mysql, cron 服务
 
+
+然后下载源码, 进入 `diy/wiki` 目录, 编辑 `config.py`
+
+``` python
+ 'dropbox': {
+      'key' : 'you Dropbox key', 
+      'secret' : 'you Dropbox secret'
+ }
+```  
+
+提交 git , 初始化完成后(大概需要 5 秒), 就能访问你的应用了
