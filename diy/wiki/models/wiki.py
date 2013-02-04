@@ -2,7 +2,7 @@
 import peewee 
 import requests
 
-from xcat.utils import Json, Filters
+from xcat.utils import Json, Filters, Date
 from xcat.models import Model
 from markupsafe import escape
 from ..models import User
@@ -14,6 +14,7 @@ class Task(Model):
     level = peewee.IntegerField(max_length=2, index=True, default=0)
     # 要访问的url
     url = peewee.CharField()
+
 
 
 class Metadata(Model):
@@ -63,16 +64,100 @@ class Metadata(Model):
                              .where(Metadata.root_id == self.id):
                 v.remove()
 
-       
+        # 删除内容
         data = Data.select()\
                    .where(Data.metadata == self)
 
         if data.count() != 0 :
             data.get().remove()
 
+        # 删除事务
+        task_affair = TaskAffairs.delete()\
+                                 .where(TaskAffairs.metadata == self)\
+                                 .execute()
+
         Metadata.delete()\
                 .where(Metadata.id == self.id).execute()
 
+
+class TaskAffairs(Model):
+    """任务事务,同步失败后回滚"""
+
+    # 对应的元数据
+    metadata = peewee.ForeignKeyField(Metadata)
+
+    # 添加的时间
+    time = peewee.IntegerField(index=True)
+
+    # 父事务
+    parent = peewee.IntegerField(default=0)
+
+    # 所有事务列表
+    parents = peewee.CharField(default=',', index=True)
+
+    # 是否目录
+    is_dir = peewee.IntegerField(max_length=2)
+
+    # 旧的同步id
+    old_hash_key = peewee.CharField()
+
+    @staticmethod
+    def add(metadata, parent_id):
+        """添加事务"""
+        parent_id = int(parent_id)
+
+        # 删除大于1天的旧事务
+        TaskAffairs.delete()\
+                   .where(
+                        TaskAffairs.time <= (Date.time() - 3600 * 24) 
+                    )\
+                    .where(
+                        TaskAffairs.metadata == metadata
+                    )\
+                    .execute()
+
+        # 检验上级事务
+        parent_affair = False
+        if 0 != parent_id:
+            parent_affair = TaskAffairs.select()\
+                                       .where(TaskAffairs.id == parent_id)
+
+            if 0 == parent_affair.count():
+                parent_id = 0
+            else:
+                parent_affair = parent_affair.get()
+                if parent_affair.metadata.id != metadata.root_id:
+                    parent_id = 0
+
+        # 创建事务
+        task_affair = TaskAffairs()
+        task_affair.metadata = metadata
+        task_affair.time = Date.time()
+        task_affair.is_dir = metadata.is_dir
+        task_affair.old_hash_key = metadata.hash_key
+
+        if parent_affair and 0 != parent_id:
+            task_affair.parent = parent_id
+            task_affair.parents = "%s%s," % (parent_affair.parents, parent_id)
+            
+        task_affair.save()
+        return task_affair
+
+    # 回滚事务
+    def rollback(self):
+        self.metadata.hash_key = self.old_hash_key
+        self.metadata.save()
+
+        if int(self.parent) != 0 :
+            ids = str(self.parents).strip(',').split(',')
+            if len(ids) > 0 :
+                ar = TaskAffairs.select()\
+                                .where(TaskAffairs.id << ids)\
+                                .where(TaskAffairs.is_dir == 1)
+
+                for v in ar:
+                    v.metadata.hash_key = v.old_hash_key
+                    v.save()
 
 
 

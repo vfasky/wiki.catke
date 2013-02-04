@@ -62,13 +62,18 @@ class SyncPath(RequestHandler, DropboxMixin):
     @asynchronous
     def get(self, user_id, id):
         id = int(id)
+
+        # 上级事务id
+        self.affair_parent = int(self.get_argument('parent', 0))
+
         if id == 0:
             # 初始化根目录
             user = User.select().where(User.id == user_id)
 
             if 0 == user.count():
                 self.write('Not User')
-                return self.finish()
+                self.finish()
+                return 
 
             user = user.get()
             path = '/'
@@ -79,7 +84,8 @@ class SyncPath(RequestHandler, DropboxMixin):
                                  .count():
 
                 self.write('Has been initialized')
-                return self.finish()
+                self.finish()
+                return 
                
         else:
             metadata = wiki.Metadata.select()\
@@ -87,7 +93,8 @@ class SyncPath(RequestHandler, DropboxMixin):
 
             if 0 == metadata.count():
                 self.write('Not Data')
-                return self.finish()
+                self.finish()
+                return 
 
             metadata = metadata.get()
 
@@ -111,26 +118,30 @@ class SyncPath(RequestHandler, DropboxMixin):
         if response.error:
             self.write('Init User(%s) Metadata Error : %s' 
                         % (self.user.id, response.error) )
-            return self.finish()
+            self.finish()
+            return 
 
         json = Json.decode(response.body)
 
         if len(json.get('path','')) > 255:
             self.write('Path Too long.')
-            return self.finish()
+            self.finish()
+            return 
         
         hash_key = json.get('hash', False) or json.get('rev','')
 
         if '' == hash_key:
             # 中文目录,先删除处理
             self.metadata.remove()
-            return self.finish()
+            self.finish()
+            return 
 
         if self.metadata:
             metadata = self.metadata
             # 没有变更
             if hash_key == str(metadata.hash_key):
-                return self.finish()
+                self.finish()
+                return 
         else:
             # 初始化根目录
             metadata = wiki.Metadata()
@@ -145,6 +156,10 @@ class SyncPath(RequestHandler, DropboxMixin):
         metadata.hash_key = hash_key
         metadata.save()
 
+        task_affair = wiki.TaskAffairs.add(
+                        metadata, 
+                        self.affair_parent
+                      )
 
         # 取目录下文件 path 列表, 与新数据比对
         # 存在的 path 删除, 列表中留下的path ,
@@ -192,14 +207,20 @@ class SyncPath(RequestHandler, DropboxMixin):
                     ar.modified = Date.str_to_time(v['modified'].split('+')[0], '%a, %d %b %Y %H:%M:%S ')
                 ar.save()
 
+                # 子事务
+                child_task_affair = wiki.TaskAffairs.add(
+                    ar, 
+                    task_affair.id
+                )
+
                 if v['is_dir']:
                     self.add_task(
-                        route.url_for('task.SyncPath', self.user.id, ar.id),
+                        route.url_for('task.SyncPath', self.user.id, ar.id) + '?parent=%s' % child_task_affair.id,
                         1
                     )
                 else:
                     self.add_task(
-                        route.url_for('task.SyncFile', ar.id),
+                        route.url_for('task.SyncFile', ar.id) + '?affair=%s' % child_task_affair.id,
                         2
                     )
         
@@ -221,19 +242,35 @@ class SyncFile(RequestHandler, DropboxMixin):
 
     @asynchronous
     def get(self, id):
+        affair_id = int(self.get_argument('affair', 0))
+        self.affair = False
+
+
         metadata = wiki.Metadata.select()\
                        .where(wiki.Metadata.id == id)
 
         if 0 == metadata.count():
             self.write('Not Data')
-            return self.finish()
+            self.finish()
+            return 
 
         metadata = metadata.get()
 
         # 判断是否目录
         if '1' == str(metadata.is_dir):
             self.write('Is Dir')
-            return self.finish()
+            self.finish()
+            return 
+
+        # 检验事务
+        if 0 != affair_id:
+            affair = wiki.TaskAffairs.select()\
+                         .where(wiki.TaskAffairs.id == affair_id)
+
+            if 0 != affair.count():
+                affair = affair.get()
+                if affair.metadata == metadata:
+                    self.affair = affair
 
         user = metadata.user
         self.user = user
@@ -246,38 +283,50 @@ class SyncFile(RequestHandler, DropboxMixin):
                              list="true")
 
     def callback(self, response):
-        if response.error:
-            self.write('get File(%s) Error : %s' 
-                        % (self.metadata.id, response.error) )
-            return self.finish()
-
         metadata = self.metadata
 
-        uri, ext = os.path.splitext(metadata.path)
-        ext = ext.lower().split('.').pop() 
-        source = str(response.body)
-        html = False
+        try:
+            if response.error:
+                # 同步失败,回滚事务
+                if self.affair:
+                    self.affair.rollback()
 
-        if hasattr(self, 'format_%s' %  ext):
-            html = getattr(self, 'format_%s' %  ext)(source)
+                self.write('get File(%s) Error : %s' 
+                            % (self.metadata.id, response.error) )
+                return self.finish()
 
-        if html:
-            data = wiki.Data.select()\
-                            .where(wiki.Data.metadata == metadata)
+            uri, ext = os.path.splitext(metadata.path)
+            ext = ext.lower().split('.').pop() 
+            source = str(response.body)
+            html = False
 
-        if 0 == data.count():
-            data = wiki.Data()
-            data.metadata = metadata
-            data.user = self.user
-        else:
-            data = data.get()
+            if hasattr(self, 'format_%s' %  ext):
+                html = getattr(self, 'format_%s' %  ext)(source)
 
-        data.source = source
-        data.html = html
-        data.save()
+            if html:
+                data = wiki.Data.select()\
+                                .where(wiki.Data.metadata == metadata)
 
-        # 提取 tags
-        data.build_tags()
+            if 0 == data.count():
+                data = wiki.Data()
+                data.metadata = metadata
+                data.user = self.user
+            else:
+                data = data.get()
+
+            data.source = source
+            data.html = html
+            data.save()
+
+            # 提取 tags
+            data.build_tags()
+
+        except Exception, e:
+            # 失败回滚
+            if self.affair:
+                self.affair.rollback()
+               
+       
     
         self.finish()
 

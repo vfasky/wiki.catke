@@ -33,10 +33,13 @@ for v in wiki.Task.select()\
                   .order_by(wiki.Task.level.desc())\
                   .limit(20):
 
-    requests.get(v.url, timeout=2.8)
-    print "get %s" % v.url
-    # 删除任务
-    wiki.Task.delete().where(wiki.Task.id == v.id).execute()
+    try:
+      requests.get(v.url, timeout=2.8)
+      print "get %s" % v.url
+      # 删除任务
+      wiki.Task.delete().where(wiki.Task.id == v.id).execute()
+    except Exception, e:
+      pass
 
 
 if 0 == wiki.Task.select().count():
