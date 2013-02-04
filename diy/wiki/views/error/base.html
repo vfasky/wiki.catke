@@ -11,7 +11,7 @@
           <h1>提示信息</h1>
         </div>
         <code class="alert alert-error">
-            {{exception or msg}}
+            {% block msg %}{{exception or msg}}{% endblock %}
         </code>
         
     </div>

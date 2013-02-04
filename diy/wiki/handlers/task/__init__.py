@@ -139,9 +139,9 @@ class SyncPath(RequestHandler, DropboxMixin):
         if self.metadata:
             metadata = self.metadata
             # 没有变更
-            if hash_key == str(metadata.hash_key):
-                self.finish()
-                return 
+            # if hash_key == str(metadata.hash_key):
+            #     self.finish()
+            #     return 
         else:
             # 初始化根目录
             metadata = wiki.Metadata()
@@ -198,7 +198,7 @@ class SyncPath(RequestHandler, DropboxMixin):
                 else:
                     ar = ar.get()
                     # 没有更改, 跳过
-                    if hash_key == ar.hash_key:
+                    if 0 == is_dir and hash_key == ar.hash_key:
                         continue   
 
                 ar.bytes = v['bytes']
