@@ -182,6 +182,29 @@ class Data(Model):
             .where(Data.id == self.id)\
             .execute()
 
+    def get_tags(self, count=10):
+        return Tags.select(Tags.id, Tags.tag)\
+                   .join(DataTags)\
+                   .join(Data)\
+                   .where(DataTags.data == self)\
+                   .order_by(Tags.id.asc())\
+                   .limit(count)
+
+    def get_related(self):
+        # 取相关 wiki
+        related = []
+        for tag in self.get_tags():
+            ar = DataTags.select()\
+                         .where(DataTags.tag == tag)\
+                         .where(DataTags.data != self)\
+                         .order_by(DataTags.id.asc())
+
+            if 0 != ar.count():
+                related.append(ar.get())
+
+
+        return related
+
     def build_tags(self):
         txt  = escape(Filters.to_text(self.source))
         from ..handlers.task.helper import extract_tags

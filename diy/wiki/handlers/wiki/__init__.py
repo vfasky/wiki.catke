@@ -84,9 +84,22 @@ class File(RequestHandler):
                 )
             return self.write_error(msg='页面正在同步中, 请稍候刷新')
 
-        html = ar.get().html
+        ar = ar.get()
+
+        # 查找相关wiki
+        related = []
+        for v in ar.get_related():
+            item = {
+                'tag' : v.tag.tag ,
+                'url' : route.url_for('wiki.File', v.data.metadata.path.strip('/'))
+            }
+            related.append(item)
+   
+
+        html = ar.html
 
         self.render('wiki/index.html',
                     html = html,
-                    title = get_title_by_html(html)
+                    title = get_title_by_html(html),
+                    related = related
                    )

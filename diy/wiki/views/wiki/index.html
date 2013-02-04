@@ -14,6 +14,16 @@
         {{html}}
 
         
+        {% if related|count > 0 %}
+        <div class="related">
+            <hr/>
+            <h2>相关内容</h2>
+
+            {% for v in  related %}
+            <a href="{{v['url']}}">{{v['tag']}}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     <div class="footer clear">

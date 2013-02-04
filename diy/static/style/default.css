@@ -565,6 +565,17 @@ pre tt {
   float: none;
   margin: 0 auto;
 }
+.related {
+  padding: 12px;
+}
+.related h2 {
+  border: none;
+  font-size: 14px;
+}
+.related a {
+  padding: 0 12px;
+  font-size: 14px;
+}
 .highlight .hll {
   background-color: #ffffcc;
 }
